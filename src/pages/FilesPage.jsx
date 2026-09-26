@@ -24,7 +24,7 @@ export default function FilesPage() {
           action={<span className="count-pill">{order.files.length} files</span>}
         />
 
-        <div className="file-list">
+        <div className="flex flex-col gap-2.5">
           {order.files.map((file) => (
             <FileCard
               key={file.id}
@@ -35,12 +35,12 @@ export default function FilesPage() {
           ))}
         </div>
 
-        <button className="add-files-button" onClick={() => navigate('/upload')}>
+        <button className="mt-[13px] flex min-h-12 w-full items-center justify-center gap-[7px] rounded-[14px] border border-dashed border-[#aaa6ff] bg-[#fbfbff] font-[650] text-[#4b43e5] transition hover:border-[#8580f5] hover:bg-[#f5f4ff]" onClick={() => navigate('/upload')}>
           <Plus size={19} /> Add More Files
         </button>
 
         {order.files.length > 0 && (
-          <div className="files-page-actions">
+          <div className="mx-auto mt-6 w-full max-w-[560px]">
           <Button
             className="bottom-cta"
             onClick={() => {

@@ -1,3 +1,4 @@
+import { getPhotoSheetLayout } from './utils/printPreview';
 export const MAX_FILE_SIZE = 20 * 1024 * 1024;
 export const ACCEPTED_FILE_TYPES = [
   'application/pdf',
@@ -41,11 +42,13 @@ export function validateFiles(files) {
   return { valid, errors };
 }
 
-export function getSelectedPageCount(file) {
-  if (!file || file.type !== 'document') return 1;
+export function getSelectedPageNumbers(file) {
+  if (!file || file.type !== 'document') return [1];
 
   const totalPages = Math.max(1, Number(file.pages) || 1);
-  if (file.options?.pageSelection !== 'custom') return totalPages;
+  if (file.options?.pageSelection !== 'custom') {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
 
   const raw = String(file.options?.pageRange || '');
   const selected = new Set();
@@ -68,7 +71,11 @@ export function getSelectedPageCount(file) {
     if (Number.isInteger(page) && page >= 1 && page <= totalPages) selected.add(page);
   });
 
-  return selected.size || 0;
+  return [...selected].sort((a, b) => a - b);
+}
+
+export function getSelectedPageCount(file) {
+  return getSelectedPageNumbers(file).length;
 }
 
 export function getFilePrintCost(file, pricing) {
@@ -85,22 +92,26 @@ export function getFilePrintCost(file, pricing) {
     photos: { '4 × 6': 10, '5 × 7': 15, A6: 12, A5: 18, A4: 25, A3: 50 },
   };
 
+  const finishing = options?.finishing || {};
+  const finishingTotal = (finishing.lamination ? rates.finishing?.lamination || 0 : 0)
+    + (finishing.binding ? rates.finishing?.binding || 0 : 0)
+    + (finishing.stapling ? rates.finishing?.stapling || 0 : 0);
+
   if (file.type === 'photo') {
-    return (rates.photos[options.paperSize] || rates.photos.A4) * copies;
+    const sheetsRequired = getPhotoSheetLayout(file).sheetsRequired;
+    return Math.round((rates.photos[options.paperSize] || rates.photos.A4) * sheetsRequired + finishingTotal);
   }
 
   const paper = rates.paper[options.paperSize] || rates.paper.A4;
   const rateKey = `${options.color === 'color' ? 'color' : 'bw'}${options.sides === 'double' ? 'Double' : 'Single'}`;
-  return Math.round(getSelectedPageCount(file) * copies * (paper[rateKey] || paper.bwSingle));
+  return Math.round(getSelectedPageCount(file) * copies * (paper[rateKey] || paper.bwSingle) + finishingTotal);
 }
 
 export function getOrderTotals(files, pricing) {
-  const totalPages = files.reduce((sum, file) => sum + getSelectedPageCount(file), 0);
-  const totalCopies = files.reduce((sum, file) => {
-    const copies = file.options?.copies || 1;
-    return sum + getSelectedPageCount(file) * copies;
-  }, 0);
+  const totalPages = files.reduce((sum, file) => sum + (file.type === 'photo' ? 0 : getSelectedPageCount(file)), 0);
+  const totalCopies = files.reduce((sum, file) => sum + Math.max(1, Number(file.options?.copies) || 1), 0);
+  const totalPhotoSheets = files.reduce((sum, file) => sum + (file.type === 'photo' ? getPhotoSheetLayout(file).sheetsRequired : 0), 0);
   const total = files.reduce((sum, file) => sum + getFilePrintCost(file, pricing), 0);
 
-  return { totalPages, totalCopies, total };
+  return { totalPages, totalCopies, totalPhotoSheets, total };
 }

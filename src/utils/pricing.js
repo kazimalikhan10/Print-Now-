@@ -1,5 +1,6 @@
 import { defaultPricing } from '../data/mockData';
 import { getSelectedPageCount } from '../utils';
+import { getPhotoSheetLayout } from './printPreview';
 
 export function getPricing(shopOrPricing) {
   return shopOrPricing?.pricing || shopOrPricing || defaultPricing;
@@ -9,7 +10,9 @@ export function getLinePrice(file, pricing = defaultPricing) {
   const rates = getPricing(pricing);
   const copies = Math.max(1, Number(file.options?.copies) || 1);
   if (file.type === 'photo') {
-    const photoTotal = (rates.photos[file.options?.paperSize] || rates.photos.A4) * copies;
+    const sheetLayout = getPhotoSheetLayout(file);
+    const sheetsRequired = sheetLayout.sheetsRequired || Math.max(1, Math.ceil(copies / Math.max(1, sheetLayout.capacity)));
+    const photoTotal = (rates.photos[file.options?.paperSize] || rates.photos.A4) * sheetsRequired;
     const finishing = file.options?.finishing || {};
     const finishingTotal = (finishing.lamination ? rates.finishing?.lamination || 0 : 0) + (finishing.binding ? rates.finishing?.binding || 0 : 0) + (finishing.stapling ? rates.finishing?.stapling || 0 : 0);
     return Math.round(photoTotal + finishingTotal);
@@ -34,5 +37,6 @@ export function getPricingBreakdown(file, pricing = defaultPricing) {
       })();
   const finishing = file.options?.finishing || {};
   const finishingTotal = (finishing.lamination ? rates.finishing?.lamination || 0 : 0) + (finishing.binding ? rates.finishing?.binding || 0 : 0) + (finishing.stapling ? rates.finishing?.stapling || 0 : 0);
-  return { pages, copies, unit, finishingTotal, total: getLinePrice(file, rates) };
+  const sheets = file.type === 'photo' ? getPhotoSheetLayout(file).sheetsRequired : pages;
+  return { pages, copies, sheets, unit, finishingTotal, total: getLinePrice(file, rates) };
 }

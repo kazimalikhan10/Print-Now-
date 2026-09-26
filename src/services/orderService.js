@@ -1,6 +1,7 @@
 import { mockOrders } from '../data/mockData';
 import { getLinePrice } from '../utils/pricing';
 import { getSelectedPageCount } from '../utils';
+import { getPhotoSheetLayout } from '../utils/printPreview';
 import { STORAGE_KEYS, createId, readStorage, writeStorage } from './storageService';
 
 export function getOrders() {
@@ -31,6 +32,12 @@ export function createOrder({ order, pricing }) {
     pageSelection: file.options?.pageSelection,
     pageRange: file.options?.pageRange || '',
     fit: file.options?.fit,
+    photoLayout: file.options?.photoLayout || 'single',
+    imageWidthMm: file.options?.imageWidthMm,
+    imageHeightMm: file.options?.imageHeightMm,
+    crop: file.options?.crop,
+    rotation: file.options?.rotation,
+    sheets: file.type === 'photo' ? getPhotoSheetLayout(file).sheetsRequired : getSelectedPageCount(file),
     finishing: file.options?.finishing || {},
   }));
 
@@ -44,7 +51,7 @@ export function createOrder({ order, pricing }) {
     paymentMethod: order.checkoutPayment?.method || 'shop',
     createdAt: `Today, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
     total,
-    pages: order.files.reduce((sum, file) => sum + getSelectedPageCount(file), 0),
+    pages: order.files.reduce((sum, file) => sum + (file.type === 'photo' ? getPhotoSheetLayout(file).sheetsRequired : getSelectedPageCount(file)), 0),
     files,
   };
 
@@ -84,6 +91,11 @@ export function createReorder(order) {
       pageSelection: file.pageSelection || 'all',
       pageRange: file.pageRange || '',
       fit: file.fit || 'fill',
+      photoLayout: file.photoLayout || 'single',
+      imageWidthMm: file.imageWidthMm,
+      imageHeightMm: file.imageHeightMm,
+      crop: file.crop,
+      rotation: file.rotation || 0,
       finishing: file.finishing || {},
     },
   }));

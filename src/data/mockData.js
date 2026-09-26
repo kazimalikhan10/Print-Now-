@@ -77,8 +77,8 @@ export const createFile = ({ name, type, size = 0, pages = 1, preview = null, so
   configured: true,
   options: type === 'photo'
     ? {
-        paperSize: 'A4', orientation: 'portrait', color: 'color', copies: 1, fit: 'fill', rotation: 0,
-        crop: { x: 0, y: 0, zoom: 1 }, imageWidthMm: 210, imageHeightMm: 297, finishing: { lamination: false, binding: false, stapling: false },
+        paperSize: 'A4', orientation: 'portrait', color: 'color', copies: 1, fit: 'fill', rotation: 0, photoLayout: 'single',
+        crop: { x: 0, y: 0, zoom: 1, rect: { left: 0.05, top: 0.05, right: 0.95, bottom: 0.95 } }, imageWidthMm: 210, imageHeightMm: 297, finishing: { lamination: false, binding: false, stapling: false },
       }
     : {
         paperSize: 'A4', orientation: 'portrait', color: 'bw', copies: 1, sides: 'single', pageSelection: 'all', finishing: { lamination: false, binding: false, stapling: false },

@@ -26,6 +26,15 @@ export default function ConfigurePage() {
   }
 
   const update = (key, value) => {
+    if (isPhoto && key === 'photoLayout') {
+      const nextPaper = getPaperDimensions(file.options.paperSize || 'A4', file.options.orientation || 'portrait');
+      if (value === 'single') {
+        updateFileOptions(file.id, { photoLayout: value, imageWidthMm: nextPaper.width, imageHeightMm: nextPaper.height });
+      } else {
+        updateFileOptions(file.id, { photoLayout: value, imageWidthMm: Number(file.options.imageWidthMm) >= nextPaper.width ? 45 : (Number(file.options.imageWidthMm) || 45), imageHeightMm: Number(file.options.imageHeightMm) >= nextPaper.height ? 45 : (Number(file.options.imageHeightMm) || 45) });
+      }
+      return;
+    }
     if (isPhoto && (key === 'paperSize' || key === 'orientation')) {
       const previousPaper = getPaperDimensions(file.options.paperSize || 'A4', file.options.orientation || 'portrait');
       const nextPaper = getPaperDimensions(
@@ -34,17 +43,19 @@ export default function ConfigurePage() {
       );
       const currentWidth = Number(file.options.imageWidthMm);
       const currentHeight = Number(file.options.imageHeightMm);
+      const isSingle = (file.options.photoLayout || 'single') === 'single';
       const isPaperFrame = Math.abs(currentWidth - previousPaper.width) < 0.5 && Math.abs(currentHeight - previousPaper.height) < 0.5;
-      updateFileOptions(file.id, isPaperFrame
-        ? { [key]: value, imageWidthMm: nextPaper.width, imageHeightMm: nextPaper.height, crop: { x: 0, y: 0, zoom: 1 } }
-        : { [key]: value, crop: { ...(file.options.crop || { x: 0, y: 0, zoom: 1 }), x: 0, y: 0 } });
+      updateFileOptions(file.id, isSingle || isPaperFrame
+        ? { [key]: value, imageWidthMm: nextPaper.width, imageHeightMm: nextPaper.height, crop: { x: 0, y: 0, zoom: 1, rect: { left: 0.05, top: 0.05, right: 0.95, bottom: 0.95 } } }
+        : { [key]: value, crop: { ...(file.options.crop || { x: 0, y: 0, zoom: 1, rect: { left: 0.05, top: 0.05, right: 0.95, bottom: 0.95 } }), x: 0, y: 0 } });
       return;
     }
     updateFileOptions(file.id, { [key]: value });
   };
 
   const updateCrop = (changes) => updateFileOptions(file.id, changes);
-  const invalidCustomRange = !isPhoto && file.options.pageSelection === 'custom' && !file.options.pageRange?.trim();
+  const selectedPageCount = !isPhoto ? getSelectedPageCount(file) : 1;
+  const invalidCustomRange = !isPhoto && file.options.pageSelection === 'custom' && selectedPageCount < 1;
   const paperOptions = (isPhoto ? order.shop.photoSizes : order.shop.paperSizes).map((value) => ({ value, label: value }));
   const colorOptions = [
     order.shop.settings?.acceptsBw !== false ? { value: 'bw', label: 'Black & White', icon: <span className="bw-dot" /> } : null,
@@ -78,7 +89,7 @@ export default function ConfigurePage() {
               <PhotoPrintPreview file={file} onChange={updateCrop} />
             ) : (
               <div className="document-preview-card preview-surface">
-                <DocumentPreview file={file} />
+                <DocumentPreview file={file} onPageCount={(count) => { if (count !== Number(file.pages)) updateFile(file.id, { pages: count }); }} />
               </div>
             )}
             <PrintQualityWarnings file={file} />
@@ -115,15 +126,16 @@ export default function ConfigurePage() {
 
               {isPhoto ? (
                 <>
-                  <OptionGroup label="Framing">
-                    <ChoiceGrid value={file.options.fit} onChange={(value) => update('fit', value)} options={[
-                      { value: 'fit', label: 'Fit entire image', icon: <Check size={17} /> },
-                      { value: 'fill', label: 'Fill & crop', icon: <ImageIcon size={17} /> },
+                  <OptionGroup label="Photo layout">
+                    <ChoiceGrid value={file.options.photoLayout || 'single'} onChange={(value) => update('photoLayout', value)} options={[
+                      { value: 'single', label: `One photo fills ${file.options.paperSize || 'A4'}`, icon: <ImageIcon size={17} /> },
+                      { value: 'multiple', label: 'Multiple photos on one sheet', icon: <Layers3 size={17} /> },
                     ]} />
+                    <p className="option-help">Choose one full-sheet photo, or repeat the same cropped photo at its physical size across the selected paper.</p>
                   </OptionGroup>
-                  <OptionGroup label="Exact Image Size">
-                    <div className="size-input-grid"><label><span>Width (mm)</span><input type="number" min="10" max="500" value={file.options.imageWidthMm || ''} onChange={(e) => update('imageWidthMm', Number(e.target.value))} /></label><label><span>Height (mm)</span><input type="number" min="10" max="500" value={file.options.imageHeightMm || ''} onChange={(e) => update('imageHeightMm', Number(e.target.value))} /></label></div>
-                    <p className="option-help">The white paper is the selected paper size. These fields control the physical image/frame size on that paper.</p>
+                  <OptionGroup label="Photo size">
+                    <div className="size-input-grid"><label><span>Width (mm)</span><input type="number" min="10" max="500" disabled={(file.options.photoLayout || 'single') === 'single'} value={file.options.imageWidthMm || ''} onChange={(e) => update('imageWidthMm', Number(e.target.value))} /></label><label><span>Height (mm)</span><input type="number" min="10" max="500" disabled={(file.options.photoLayout || 'single') === 'single'} value={file.options.imageHeightMm || ''} onChange={(e) => update('imageHeightMm', Number(e.target.value))} /></label></div>
+                    <p className="option-help">{(file.options.photoLayout || 'single') === 'single' ? `The photo is scaled to the full ${file.options.paperSize || 'A4'} sheet.` : 'Enter the real printed photo size. The app calculates how many fit on one sheet, including the best rotated arrangement.'}</p>
                   </OptionGroup>
                 </>
               ) : (

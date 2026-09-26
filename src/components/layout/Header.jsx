@@ -12,24 +12,26 @@ export default function Header({ showBack = false, onBack }) {
     navigate('/');
   };
 
+  const iconButton = 'grid h-[38px] w-[38px] place-items-center rounded-[10px] border-0 bg-transparent text-[#111827] transition hover:bg-[#f3f4f8]';
+
   return (
-    <header className="app-header">
-      <div className="header-inner">
-        <div className="header-side header-side-left">
+    <header className="sticky top-0 z-20 border-b border-[#edf0f6] bg-white/[.96] backdrop-blur-xl">
+      <div className="mx-auto flex h-[62px] max-w-[760px] items-center gap-[9px] px-[18px]">
+        <div className="flex items-center">
           {showBack ? (
-            <button className="icon-button" onClick={onBack} aria-label="Go back">←</button>
+            <button className={iconButton} onClick={onBack} aria-label="Go back">←</button>
           ) : (
-            <div className="brand-mark">PN</div>
+            <div className="grid h-[22px] w-[22px] place-items-center rounded-[7px] border-2 border-[#4338f2] text-[.58rem] font-bold text-[#4338f2]">PN</div>
           )}
         </div>
 
-        <button className="brand-center" type="button" onClick={() => navigate('/')} aria-label="Print Now home">
-          <span className="brand-name">Print Now</span>
+        <button className="mx-auto border-0 bg-transparent p-0" type="button" onClick={() => navigate('/')} aria-label="Print Now home">
+          <span className="font-bold tracking-[-.02em] text-[#2932c9]">Print Now</span>
         </button>
 
-        <div className="header-actions">
+        <div className="ml-auto flex items-center gap-1">
           <a
-            className="contact-header-button"
+            className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-[10px] px-2.5 text-[.72rem] font-semibold text-[#3730c9] transition hover:bg-[#f3f4f8]"
             href={phone ? `tel:${phone.replace(/\s+/g, '')}` : undefined}
             aria-label={phone ? `Contact ${order.shop?.name || 'shop'}` : 'Shop contact unavailable'}
             title={phone ? `Contact ${order.shop?.name || 'shop'}` : 'Shop contact unavailable'}
@@ -39,14 +41,14 @@ export default function Header({ showBack = false, onBack }) {
             <span>Contact</span>
           </a>
           <button
-            className="icon-button account-header-button"
+            className={iconButton}
             onClick={() => navigate('/account')}
             aria-label={auth.signedIn ? 'Account' : 'Sign in'}
           >
             <UserCircle size={19} />
           </button>
           {auth.signedIn && (
-            <button className="icon-button header-signout-button" onClick={handleSignOut} aria-label="Sign out" title="Sign out">
+            <button className={iconButton} onClick={handleSignOut} aria-label="Sign out" title="Sign out">
               <LogOut size={18} />
             </button>
           )}

@@ -2,13 +2,16 @@ export async function getPdfPageCount(file) {
   if (!file) return 1;
 
   try {
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const pdfjsLib = await import('pdfjs-dist/build/pdf.mjs');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
     const buffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({
+    const loadingTask = pdfjsLib.getDocument({
       data: new Uint8Array(buffer),
-      disableWorker: true,
-    }).promise;
-    return Math.max(1, Number(pdf.numPages) || 1);
+    });
+    const pdf = await loadingTask.promise;
+    const count = Math.max(1, Number(pdf.numPages) || 1);
+    await pdf.destroy();
+    return count;
   } catch {
     // Lightweight fallback for environments where PDF.js cannot initialise.
     try {

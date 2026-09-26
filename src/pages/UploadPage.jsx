@@ -50,13 +50,13 @@ export default function UploadPage() {
       <Header showBack onBack={() => navigate('/')} />
       <PageShell>
         <StepIndicator current={2} />
-        <div className="page-intro">
-          <span className="step-label">STEP 1 OF 5</span>
-          <h1>Upload Files</h1>
-          <p>Choose the documents or photos you want to print.</p>
+        <div className="mb-6 mt-[10px]">
+          <span className="text-[.68rem] font-bold tracking-[.12em] text-[#4a43e8]">STEP 1 OF 5</span>
+          <h1 className="my-[5px] mb-[7px] text-[clamp(1.55rem,5vw,2rem)] font-[750] leading-[1.1] tracking-[-.045em] text-[#171a24]">Upload Files</h1>
+          <p className="m-0 text-[.92rem] leading-[1.5] text-[#70778a]">Choose the documents or photos you want to print.</p>
         </div>
         <FileUpload onFiles={handleFiles} errors={errors} />
-        {countingPages && <p className="upload-processing-note">Reading document page counts…</p>}
+        {countingPages && <p className="mt-3 text-[.7rem] leading-[1.45] text-[#70778a]">Reading document page counts…</p>}
       </PageShell>
     </>
   );
