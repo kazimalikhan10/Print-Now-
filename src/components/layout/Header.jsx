@@ -12,6 +12,20 @@ export default function Header({ showBack = false, onBack }) {
     navigate('/');
   };
 
+  const handleAccount = () => {
+    if (auth.signedIn && auth.role === 'customer') {
+      navigate('/profile');
+      return;
+    }
+
+    if (auth.signedIn && auth.role === 'owner') {
+      navigate('/owner');
+      return;
+    }
+
+    navigate('/account');
+  };
+
   const iconButton = 'grid h-[38px] w-[38px] place-items-center rounded-[10px] border-0 bg-transparent text-[#111827] transition hover:bg-[#f3f4f8]';
 
   return (
@@ -42,8 +56,9 @@ export default function Header({ showBack = false, onBack }) {
           </a>
           <button
             className={iconButton}
-            onClick={() => navigate('/account')}
-            aria-label={auth.signedIn ? 'Account' : 'Sign in'}
+            onClick={handleAccount}
+            aria-label={auth.signedIn ? `${auth.role === 'customer' ? 'Customer' : 'Shop owner'} profile` : 'Sign in'}
+            title={auth.signedIn ? 'Profile' : 'Sign in'}
           >
             <UserCircle size={19} />
           </button>

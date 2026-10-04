@@ -3,12 +3,12 @@ import { Camera, FolderOpen, UploadCloud } from 'lucide-react';
 import Button from '../ui/Button';
 import { formatBytes, MAX_FILE_SIZE } from '../../utils';
 
-export default function FileUpload({ onFiles, errors = [], disabled = false }) {
+export default function FileUpload({ onFiles, errors = [], disabled = false, uploading = false, uploadFiles = [] }) {
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
 
   const handleSelection = (fileList) => {
-    if (disabled) return;
+    if (disabled || uploading) return;
     onFiles(Array.from(fileList || []));
   };
 
@@ -20,6 +20,32 @@ export default function FileUpload({ onFiles, errors = [], disabled = false }) {
 
   return (
     <div>
+      {uploading && (
+        <div className="mb-3 overflow-hidden rounded-[16px] border border-[#dfe2ef] bg-white shadow-[0_8px_24px_rgba(28,31,57,0.05)]" role="status" aria-live="polite">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <span className="pn-upload-spinner h-5 w-5 shrink-0 rounded-full border-2 border-[#dcd9ff] border-t-[#4a43e8]" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <strong className="block text-[.74rem] font-[750] text-[#202332]">Adding files…</strong>
+              <span className="mt-0.5 block text-[.62rem] text-[#7b8294]">Preparing your files. Large files may take a little longer.</span>
+            </div>
+          </div>
+          <div className="pn-upload-progress h-1 overflow-hidden bg-[#eeedff]"><span className="block h-full w-1/3 rounded-full bg-[#4a43e8]" /></div>
+          {uploadFiles.length > 0 && (
+            <div className="border-t border-[#f0f1f5] px-4 py-2.5">
+              <div className="flex flex-col gap-1.5">
+                {uploadFiles.map((file) => (
+                  <div key={`${file.name}-${file.size}-${file.lastModified}`} className="flex min-w-0 items-center gap-2 text-[.62rem] text-[#6f7687]">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#4a43e8]" aria-hidden="true" />
+                    <span className="truncate">{file.name}</span>
+                    <span className="ml-auto shrink-0 text-[#9a9fad]">Preparing</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div
         className={`flex flex-col items-center rounded-[17px] border-[1.5px] border-dashed px-[18px] pb-[25px] pt-7 text-center transition ${dragging ? 'border-[#4a43e8] bg-[#eeedff] shadow-[inset_0_0_0_2px_#aaa6ff]' : 'border-[#9e9aff] bg-gradient-to-b from-[#fbfbff] to-[#f4f5ff]'}`}
         onDragOver={(event) => { event.preventDefault(); setDragging(true); }}

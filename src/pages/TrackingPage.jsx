@@ -29,7 +29,11 @@ export default function TrackingPage() {
   const [copied, setCopied] = useState(false);
 
   const copyJobId = async () => {
-    try { await navigator.clipboard?.writeText(jobId); setCopied(true); window.setTimeout(() => setCopied(false), 1600); } catch { setCopied(false); }
+    try { 
+      await navigator.clipboard?.writeText(jobId);
+      setCopied(true); 
+      window.setTimeout(() => setCopied(false), 1600); 
+    } catch { setCopied(false); }
   };
 
   return (
@@ -37,7 +41,7 @@ export default function TrackingPage() {
       <Header />
       <PageShell>
         <div className="mx-auto max-w-[560px] px-2 py-2.5 text-center">
-          <div className="mx-auto mb-3 grid h-[70px] w-[70px] place-items-center rounded-full bg-[#e7f8ee] text-[#149548]"><Check size={30} /></div>
+          <div className={`pn-tracking-success mx-auto mb-3 grid h-[70px] w-[70px] place-items-center rounded-full bg-[#e7f8ee] text-[#149548] ${currentStatus === 'submitted' ? 'is-new' : ''}`}><Check size={30} /></div>
           <span className="text-[.68rem] font-bold tracking-[.12em] text-[#4a43e8]">PRINT JOB SUBMITTED</span>
           <h1 className="my-[5px] mb-[7px] text-[1.45rem] font-semibold leading-[1.1] tracking-[-.04em]">{isCancelled ? 'This print job was cancelled.' : isActionRequired ? 'Your print job needs attention.' : currentStatus === 'completed' ? 'Your print job is complete.' : 'Your files are on their way.'}</h1>
           <p className="m-0 text-[.76rem] leading-[1.5] text-[#70778a]">{isCancelled ? 'This print request was cancelled.' : isActionRequired ? 'The shop needs your attention before printing can continue.' : `We sent your print request to ${shop.name}.`}</p>

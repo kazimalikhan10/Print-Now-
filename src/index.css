@@ -732,3 +732,160 @@ body { color: var(--pn-text); }
   .business-hours-row span { display: none; }
   .business-hours-row .hours-toggle { width: 100%; }
 }
+
+
+
+/* --- Consistent button press feedback --- */
+.pn-button,
+button:not(:disabled),
+button:not(:disabled)::before {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pn-button,
+button:not(:disabled) {
+  transition: transform .12s ease, box-shadow .12s ease, background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.pn-button:active,
+button:not(:disabled):active {
+  transform: scale(.975);
+}
+
+.pn-button:focus-visible,
+button:not(:disabled):focus-visible {
+  outline: 2px solid #aaa6ff;
+  outline-offset: 2px;
+}
+
+@keyframes pn-upload-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pn-upload-slide {
+  from { transform: translateX(-140%); }
+  to { transform: translateX(420%); }
+}
+
+.pn-upload-spinner {
+  animation: pn-upload-spin .8s linear infinite;
+}
+
+.pn-upload-progress span {
+  animation: pn-upload-slide 1.25s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pn-button,
+  button:not(:disabled) { transition: none; }
+
+  .pn-button:active,
+  button:not(:disabled):active { transform: none; }
+
+  .pn-upload-spinner,
+  .pn-upload-progress span { animation: none; }
+}
+
+/* --- Smooth customer UX --- */
+@keyframes pn-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pn-success-pop {
+  0% { opacity: 0; transform: scale(.72); }
+  55% { opacity: 1; transform: scale(1.08); }
+  78% { transform: scale(.96); }
+  100% { transform: scale(1); }
+}
+
+@keyframes pn-success-ring {
+  0% { opacity: 0; transform: scale(.78); }
+  45% { opacity: .9; transform: scale(1.08); }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+
+.pn-page-enter {
+  animation: pn-page-in .34s cubic-bezier(.22,1,.36,1) both;
+}
+
+.customer-order-card,
+.customer-detail-card,
+.account-card,
+.account-choice-card {
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.customer-order-card:hover,
+.customer-detail-card:hover {
+  border-color: #deddf7;
+  box-shadow: 0 10px 28px rgba(28,31,57,.055);
+}
+
+.customer-order-card:hover {
+  transform: translateY(-1px);
+}
+
+.customer-detail-success {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  margin: 2px auto 14px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e6f8ed;
+  color: #159447;
+  animation: pn-success-pop .55s cubic-bezier(.22,1,.36,1) both;
+}
+
+.customer-detail-success::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid #8bd4aa;
+  border-radius: inherit;
+  animation: pn-success-ring .7s ease-out .08s both;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pn-page-enter,
+  .customer-detail-success,
+  .customer-detail-success::after {
+    animation: none;
+  }
+
+  .customer-order-card,
+  .customer-detail-card,
+  .account-card,
+  .account-choice-card {
+    transition: none;
+  }
+}
+
+
+.pn-tracking-success {
+  position: relative;
+}
+
+.pn-tracking-success.is-new {
+  animation: pn-success-pop .58s cubic-bezier(.22,1,.36,1) both;
+}
+
+.pn-tracking-success.is-new::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid #8bd4aa;
+  border-radius: inherit;
+  animation: pn-success-ring .72s ease-out .1s both;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pn-tracking-success.is-new,
+  .pn-tracking-success.is-new::after {
+    animation: none;
+  }
+}

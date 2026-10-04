@@ -10,11 +10,31 @@ const defaultCropRect = () => ({ left: 0.05, top: 0.05, right: 0.95, bottom: 0.9
 
 const normalizeCropRect = (rect) => {
   const source = rect || defaultCropRect();
-  const left = clamp(Number(source.left) || 0.05, 0, 1 - MIN_CROP);
-  const top = clamp(Number(source.top) || 0.05, 0, 1 - MIN_CROP);
-  const right = clamp(Number(source.right) || 0.95, left + MIN_CROP, 1);
-  const bottom = clamp(Number(source.bottom) || 0.95, top + MIN_CROP, 1);
-  return { left, top, right, bottom };
+
+  const rawLeft = Number(source.left);
+  const rawTop = Number(source.top);
+  const rawRight = Number(source.right);
+  const rawBottom = Number(source.bottom);
+
+  const left = clamp(
+    Number.isFinite(rawLeft) ? rawLeft : 0.05,0,1 - MIN_CROP
+  );
+
+  const top = clamp(
+    Number.isFinite(rawTop) ? rawTop : 0.05,0,1 - MIN_CROP
+  );
+
+  const right = clamp(
+    Number.isFinite(rawRight) ? rawRight : 0.95,left + MIN_CROP,1
+  );
+
+  const bottom = clamp(
+    Number.isFinite(rawBottom) ? rawBottom : 0.95,top + MIN_CROP,1
+  );
+
+  return {
+    left,top,right,bottom,
+  };
 };
 
 export default function PhotoPrintPreview({ file, onChange }) {

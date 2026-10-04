@@ -1,10 +1,21 @@
 import { ArrowRight, Store, UserCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import Header from '../../components/layout/Header';
 import PageShell from '../../components/layout/PageShell';
+import { useOrder } from '../../context/OrderContext';
 
 export default function AccountEntryPage() {
   const navigate = useNavigate();
+  const { auth } = useOrder();
+
+  if (auth.signedIn && auth.role === 'customer') {
+    return <Navigate to="/profile" replace />;
+  }
+
+  if (auth.signedIn && auth.role === 'owner') {
+    return <Navigate to="/owner" replace />;
+  }
+
   return <><Header showBack onBack={() => navigate('/')} /><PageShell>
     <div className="page-intro compact"><span className="step-label">ACCOUNT</span><h1>Sign in to Print Now</h1><p>Choose whether you're returning as a customer or accessing your shop portal.</p></div>
     <div className="account-choice-grid">
