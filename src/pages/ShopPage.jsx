@@ -11,10 +11,11 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import { useOrder } from '../context/OrderContext';
+import { prepareSelectedFiles } from '../utils/prepareSelectedFiles';
 import { formatBusinessHours, getShopOpenStatus } from '../utils/shopHours';
 import shopFront from '../assets/shop-front.png';
 import uploadHero from '../assets/upload-hero.png';
@@ -35,7 +36,11 @@ const popularOptions = [
 
 export default function ShopPage() {
   const navigate = useNavigate();
-  const { order, auth } = useOrder();
+  const { order, auth, addFiles } = useOrder();
+  const filesInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const [preparing, setPreparing] = useState(false);
+  const [pickerError, setPickerError] = useState('');
   const [shopStatus, setShopStatus] = useState(() => getShopOpenStatus(order.shop));
   const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
 
@@ -47,6 +52,27 @@ export default function ShopPage() {
   }, [order.shop]);
 
   const todayHours = formatBusinessHours(shopStatus.hours);
+
+  const handlePickedFiles = async (event) => {
+    const selected = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!selected.length) return;
+    setPreparing(true);
+    setPickerError('');
+    try {
+      const result = await prepareSelectedFiles(selected);
+      if (result.errors.length) setPickerError(result.errors.join(' '));
+      if (result.files.length) { addFiles(result.files); navigate('/checkout'); }
+    } catch (error) {
+      console.error('Could not prepare selected files', error);
+      setPickerError('Some files could not be prepared. Please try again.');
+    } finally { setPreparing(false); }
+  };
+
+  const openPicker = (kind) => {
+    setUploadMenuOpen(false);
+    (kind === 'camera' ? cameraInputRef.current : filesInputRef.current)?.click();
+  };
 
   const openAccount = () => {
     if (auth.signedIn && auth.role === 'customer') {
@@ -62,6 +88,10 @@ export default function ShopPage() {
 
   return (
     <div className="min-h-screen bg-[#fbfcff] text-[#10152b]">
+      <input ref={filesInputRef} type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={handlePickedFiles} className="hidden" aria-label="Select files" />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handlePickedFiles} className="hidden" aria-label="Take a picture" />
+      {preparing && <div className="fixed inset-x-4 top-20 z-50 mx-auto max-w-sm rounded-xl border border-[#e6e8f2] bg-white p-3 text-sm font-semibold shadow-lg" role="status">Preparing your files…</div>}
+      {pickerError && <div className="fixed inset-x-4 top-20 z-50 mx-auto max-w-sm rounded-xl bg-[#fff1f2] p-3 text-sm text-[#b42336] shadow-lg" role="alert">{pickerError}</div>}
       <header className="sticky top-0 z-30 border-b border-[#edf0f6]/80 bg-[#fbfcff]/95 backdrop-blur-xl">
         <div className="mx-auto flex min-h-[70px] w-[calc(100%-28px)] max-w-[760px] items-center gap-2 px-1.2 py-3 sm:min-h-[68px]">
           <div className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-[14px] bg-[#4b3ff5] text-[1.05rem] font-black text-white shadow-[0_8px_20px_rgba(75,63,245,.20)]">
@@ -232,9 +262,9 @@ export default function ShopPage() {
 
               <button
                 type="button"
-                onClick={() => navigate('/upload', { state: { openPicker: 'files' } })}
-                className={`absolute left-1/2 top-1/2 z-10 grid h-[46px] w-[46px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-[#e6e8f2] bg-white text-[#4b3ff5] shadow-[0_8px_22px_rgba(30,36,70,.12)] transition-all duration-1000 ease-in-out active:scale-[.94] ${uploadMenuOpen ? '-translate-x-[100px] -translate-y-[12px] scale-100 opacity-100' : '-translate-x-1/2 -translate-y-1/2 scale-75 opacity-0 pointer-events-none'}`}
-                style={{ transitionDelay: uploadMenuOpen ? '0ms' : '100ms' }}
+                onClick={() => openPicker('files')}
+                className={`absolute left-1/2 top-1/2 z-10 grid h-[46px] w-[46px] place-items-center rounded-full border border-[#e6e8f2] bg-white text-[#4b3ff5] shadow-[0_8px_22px_rgba(30,36,70,.12)] transition-[transform,opacity] duration-700 ease-in-out active:scale-[.94] ${uploadMenuOpen ? 'scale-100 opacity-100' : 'scale-75 opacity-0 pointer-events-none'}` }
+                style={{ transform: uploadMenuOpen ? 'translate(calc(-50% - 44px), calc(-50% - 60px))' : 'translate(-50%, -50%)', transitionDuration: '700ms', transitionDelay: '0ms' }}
                 aria-label="Select files"
               >
                 <FileText size={19} strokeWidth={2} />
@@ -242,9 +272,9 @@ export default function ShopPage() {
 
               <button
                 type="button"
-                onClick={() => navigate('/upload', { state: { openPicker: 'camera' } })}
-                className={`absolute left-1/2 top-1/2 z-10 grid h-[46px] w-[46px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-[#e6e8f2] bg-white text-[#4b3ff5] shadow-[0_8px_22px_rgba(30,36,70,.12)] transition-all duration-1000 ease-in-out active:scale-[.94] ${uploadMenuOpen ? '-translate-x-1/2 -translate-y-[100px] scale-100 opacity-100' : '-translate-x-1/2 -translate-y-1/2 scale-75 opacity-0 pointer-events-none'}`}
-                style={{ transitionDelay: uploadMenuOpen ? '100ms' : '0ms' }}
+                onClick={() => openPicker('camera')}
+                className={`absolute left-1/2 top-1/2 z-10 grid h-[46px] w-[46px] place-items-center rounded-full border border-[#e6e8f2] bg-white text-[#4b3ff5] shadow-[0_8px_22px_rgba(30,36,70,.12)] transition-[transform,opacity] duration-700 ease-in-out active:scale-[.94] ${uploadMenuOpen ? 'scale-100 opacity-100' : 'scale-75 opacity-0 pointer-events-none'}` }
+                style={{ transform: uploadMenuOpen ? 'translate(calc(-50% + 44px), calc(-50% - 60px))' : 'translate(-50%, -50%)', transitionDuration: '700ms', transitionDelay: '0ms' }}
                 aria-label="Click a picture"
               >
                 <Camera size={20} strokeWidth={2} />

@@ -4,7 +4,6 @@ import Header from '../components/layout/Header';
 import PageShell from '../components/layout/PageShell';
 import FileCard from '../components/files/FileCard';
 import Button from '../components/ui/Button';
-import StepIndicator from '../components/ui/StepIndicator';
 import SectionTitle from '../components/ui/SectionTitle';
 import { useOrder } from '../context/OrderContext';
 
@@ -17,8 +16,7 @@ export default function FilesPage() {
     <>
       <Header showBack onBack={() => navigate('/upload')} />
       <PageShell>
-        <StepIndicator current={3} />
-        <SectionTitle
+<SectionTitle
           title="Your Files"
           subtitle="Configure each file before placing your order."
           action={<span className="count-pill">{order.files.length} files</span>}

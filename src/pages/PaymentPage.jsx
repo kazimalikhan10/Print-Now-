@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import PageShell from '../components/layout/PageShell';
 import Button from '../components/ui/Button';
-import StepIndicator from '../components/ui/StepIndicator';
 import { useOrder } from '../context/OrderContext';
 import { getOrderTotals } from '../utils';
 
@@ -98,8 +97,7 @@ export default function PaymentPage() {
     <>
       <Header showBack onBack={() => navigate('/summary')} />
       <PageShell className="payment-page">
-        <StepIndicator current={4} />
-        <div className="payment-heading">
+<div className="payment-heading">
           <div>
             <span className="step-label">PAYMENT</span>
             <h1>Choose a payment method</h1>

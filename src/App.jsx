@@ -25,6 +25,7 @@ import CustomerOrdersPage from './pages/customer/CustomerOrdersPage';
 import CustomerProfilePage from './pages/customer/CustomerProfilePage';
 import CustomerOrderDetailPage from './pages/customer/CustomerOrderDetailPage';
 import PaymentPage from './pages/PaymentPage';
+import CheckoutPage from './pages/CheckoutPage';
 
 function OwnerGuard() {
   const { auth } = useOrder();
@@ -37,6 +38,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<ShopPage />} />
         <Route path="/upload" element={<UploadPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/files" element={<FilesPage />} />
         <Route path="/configure/:fileId" element={<ConfigurePage />} />
         <Route path="/summary" element={<SummaryPage />} />

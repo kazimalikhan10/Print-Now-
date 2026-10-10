@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import PageShell from '../components/layout/PageShell';
@@ -7,10 +8,10 @@ import { useOrder } from '../context/OrderContext';
 import { createFile } from '../data/mockData';
 import { validateFiles, getFileType } from '../utils';
 import { getPdfPageCount } from '../utils/pdf';
-import StepIndicator from '../components/ui/StepIndicator';
 
 export default function UploadPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { addFiles } = useOrder();
   const [errors, setErrors] = useState([]);
   const [countingPages, setCountingPages] = useState(false);
@@ -41,7 +42,7 @@ export default function UploadPage() {
       }));
 
       addFiles(mapped);
-      navigate('/files');
+      navigate('/checkout');
     } finally {
       setCountingPages(false);
       setUploadFiles([]);
@@ -52,13 +53,12 @@ export default function UploadPage() {
     <>
       <Header showBack onBack={() => navigate('/')} />
       <PageShell>
-        <StepIndicator current={2} />
-        <div className="mb-6 mt-[10px]">
-          <span className="text-[.68rem] font-bold tracking-[.12em] text-[#4a43e8]">STEP 1 OF 5</span>
+<div className="mb-6 mt-[10px]">
+          
           <h1 className="my-[5px] mb-[7px] text-[clamp(1.55rem,5vw,2rem)] font-[750] leading-[1.1] tracking-[-.045em] text-[#171a24]">Upload Files</h1>
           <p className="m-0 text-[.92rem] leading-[1.5] text-[#70778a]">Choose the documents or photos you want to print.</p>
         </div>
-        <FileUpload onFiles={handleFiles} errors={errors} uploading={countingPages} uploadFiles={uploadFiles} disabled={countingPages} />
+        <FileUpload onFiles={handleFiles} errors={errors} uploading={countingPages} uploadFiles={uploadFiles} disabled={countingPages} openPicker={location.state?.openPicker || null} />
         {countingPages && <p className="mt-3 text-[.7rem] leading-[1.45] text-[#70778a]">Preparing document details…</p>}
       </PageShell>
     </>

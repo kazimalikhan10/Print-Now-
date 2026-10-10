@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import PageShell from '../components/layout/PageShell';
 import Button from '../components/ui/Button';
-import StepIndicator from '../components/ui/StepIndicator';
 import { useOrder } from '../context/OrderContext';
 import { getOrderTotals } from '../utils';
 
@@ -17,8 +16,7 @@ export default function ConfirmationPage() {
     <>
       <Header showBack onBack={() => navigate('/customer')} />
       <PageShell>
-        <StepIndicator current={5} />
-        <div className="mb-[18px] mt-[10px]">
+<div className="mb-[18px] mt-[10px]">
           <span className="text-[.68rem] font-bold tracking-[.12em] text-[#4a43e8]">FINAL CHECK</span>
           <h1 className="my-[5px] mb-[7px] text-[clamp(1.55rem,5vw,2rem)] font-[750] leading-[1.1] tracking-[-.045em] text-[#171a24]">Ready to print?</h1>
           <p className="m-0 text-[.92rem] leading-[1.5] text-[#70778a]">Please review the order once before sending it to the shop.</p>

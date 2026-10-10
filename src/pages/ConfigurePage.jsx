@@ -1,12 +1,11 @@
 import { Check, Image as ImageIcon, Minus, Plus, RectangleHorizontal, RectangleVertical, Scissors, Layers3, Paperclip } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { getPaperDimensions } from '../utils/printPreview';
 import Header from '../components/layout/Header';
 import PageShell from '../components/layout/PageShell';
 import Button from '../components/ui/Button';
 import OptionGroup from '../components/printing/OptionGroup';
 import ChoiceGrid from '../components/printing/ChoiceGrid';
-import StepIndicator from '../components/ui/StepIndicator';
 import DocumentPreview from '../components/printing/DocumentPreview';
 import PhotoPrintPreview from '../components/printing/PhotoPrintPreview';
 import PrintQualityWarnings from '../components/printing/PrintQualityWarnings';
@@ -16,7 +15,8 @@ import { getSelectedPageCount } from '../utils';
 export default function ConfigurePage() {
   const { fileId } = useParams();
   const navigate = useNavigate();
-  const { order, updateFileOptions } = useOrder();
+  const location = useLocation();
+  const { order, updateFileOptions, updateFile } = useOrder();
   const file = order.files.find((item) => item.id === fileId);
   const isPhoto = file?.type === 'photo';
 
@@ -73,9 +73,8 @@ export default function ConfigurePage() {
 
   return (
     <>
-      <Header showBack onBack={() => navigate('/files')} />
+      <Header showBack onBack={() => navigate(location.state?.returnTo || '/files')} />
       <PageShell>
-        <StepIndicator current={3} />
 
         <div className="configure-layout">
           <div className="configure-preview-column">
@@ -149,7 +148,7 @@ export default function ConfigurePage() {
         </div>
 
         {invalidCustomRange && <div className="form-error configure-warning" role="alert">Enter a page range or choose All Pages before continuing.</div>}
-        <div className="configure-actions"><Button className="bottom-cta" disabled={invalidCustomRange} onClick={() => navigate('/files')}>Save & Continue</Button></div>
+        <div className="configure-actions"><Button className="bottom-cta" disabled={invalidCustomRange} onClick={() => navigate(location.state?.returnTo || '/files')}>Done editing</Button></div>
       </PageShell>
     </>
   );

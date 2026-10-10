@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import PageShell from '../components/layout/PageShell';
 import Button from '../components/ui/Button';
-import StepIndicator from '../components/ui/StepIndicator';
 import { useOrder } from '../context/OrderContext';
 
 export default function CustomerDetailsPage() {
@@ -27,8 +26,7 @@ export default function CustomerDetailsPage() {
     <>
       <Header showBack onBack={() => navigate('/summary')} />
       <PageShell>
-        <StepIndicator current={5} />
-        <div className="mb-[18px] mt-[10px]">
+<div className="mb-[18px] mt-[10px]">
           <span className="text-[.68rem] font-bold tracking-[.12em] text-[#4a43e8]">YOUR DETAILS</span>
           <h1 className="my-[5px] mb-[7px] text-[clamp(1.55rem,5vw,2rem)] font-[750] leading-[1.1] tracking-[-.045em] text-[#171a24]">Almost there</h1>
           <p className="m-0 text-[.92rem] leading-[1.5] text-[#70778a]">We only need a couple of details so the shop can identify your order.</p>

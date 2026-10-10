@@ -1,11 +1,21 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Camera, FolderOpen, UploadCloud } from 'lucide-react';
 import Button from '../ui/Button';
 import { formatBytes, MAX_FILE_SIZE } from '../../utils';
 
-export default function FileUpload({ onFiles, errors = [], disabled = false, uploading = false, uploadFiles = [] }) {
+export default function FileUpload({ onFiles, errors = [], disabled = false, uploading = false, uploadFiles = [], openPicker = null }) {
   const inputRef = useRef(null);
+  const cameraInputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    if (disabled || uploading || !openPicker) return;
+    const timer = window.setTimeout(() => {
+      if (openPicker === 'camera') cameraInputRef.current?.click();
+      else inputRef.current?.click();
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [disabled, uploading, openPicker]);
 
   const handleSelection = (fileList) => {
     if (disabled || uploading) return;
@@ -80,7 +90,7 @@ export default function FileUpload({ onFiles, errors = [], disabled = false, upl
       <div className="my-[22px] flex items-center gap-3 text-[.74rem] text-[#858b9b] before:h-px before:flex-1 before:bg-[#e4e7ef] after:h-px after:flex-1 after:bg-[#e4e7ef]"><span>Or take a photo</span></div>
       <div className="grid grid-cols-2 gap-2.5">
         <label className="flex min-h-[78px] flex-col items-center justify-center gap-[7px] rounded-[14px] border border-[#e4e7ef] bg-white text-[#333a4b]">
-          <input className="absolute h-px w-px pointer-events-none opacity-0" type="file" accept="image/*" capture="environment" onChange={(event) => { handleSelection(event.target.files); event.target.value = ''; }} />
+          <input ref={cameraInputRef} className="absolute h-px w-px pointer-events-none opacity-0" type="file" accept="image/*" capture="environment" onChange={(event) => { handleSelection(event.target.files); event.target.value = ''; }} />
           <Camera size={24} />
           <span>Camera</span>
         </label>

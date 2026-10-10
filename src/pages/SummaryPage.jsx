@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import PageShell from '../components/layout/PageShell';
 import Button from '../components/ui/Button';
-import StepIndicator from '../components/ui/StepIndicator';
 import { useOrder } from '../context/OrderContext';
 import { getFilePrintCost, getOrderTotals, getSelectedPageCount } from '../utils';
 
@@ -27,8 +26,7 @@ export default function SummaryPage() {
     <>
       <Header showBack onBack={() => navigate('/files')} />
       <PageShell>
-        <StepIndicator current={4} />
-        <div className="mb-[18px] mt-[10px]">
+<div className="mb-[18px] mt-[10px]">
           <span className="text-[.68rem] font-bold tracking-[.12em] text-[#4a43e8]">ORDER SUMMARY</span>
           <h1 className="my-[5px] mb-[7px] text-[clamp(1.55rem,5vw,2rem)] font-[750] leading-[1.1] tracking-[-.045em] text-[#171a24]">Review your print</h1>
           <p className="m-0 text-[.92rem] leading-[1.5] text-[#70778a]">Everything looks right? You can still edit any file before continuing.</p>
