@@ -66,7 +66,7 @@ export const mockOrders = [
   },
 ];
 
-export const createFile = ({ name, type, size = 0, pages = 1, preview = null, sourceFile = null }) => ({
+export const createFile = ({ name, type, size = 0, pages = 1, preview = null, sourceFile = null, backendFileId = null, backendFileStatus = null, backendValidation = null, backendAnalysis = null }) => ({
   id: crypto.randomUUID(),
   name,
   type,
@@ -74,11 +74,15 @@ export const createFile = ({ name, type, size = 0, pages = 1, preview = null, so
   pages,
   preview,
   sourceFile,
+  backendFileId,
+  backendFileStatus,
+  backendValidation,
+  backendAnalysis,
   configured: true,
   options: type === 'photo'
     ? {
-        paperSize: 'A4', orientation: 'portrait', color: 'color', copies: 1, fit: 'fill', rotation: 0, photoLayout: 'single',
-        crop: { x: 0, y: 0, zoom: 1, rect: { left: 0.05, top: 0.05, right: 0.95, bottom: 0.95 } }, imageWidthMm: 210, imageHeightMm: 297, finishing: { lamination: false, binding: false, stapling: false },
+        paperSize: 'A4', orientation: 'portrait', color: 'color', copies: 1, photoSize: 'PASSPORT', photoQuantity: 6, fit: 'fill', rotation: 0, photoLayout: 'sheet',
+        crop: { x: 0, y: 0, zoom: 1, rect: { left: 0.05, top: 0.05, right: 0.95, bottom: 0.95 } }, imageWidthMm: 35, imageHeightMm: 45, sheetMarginMm: 5, sheetGapMm: 3, finishing: { lamination: false, binding: false, stapling: false },
       }
     : {
         paperSize: 'A4', orientation: 'portrait', color: 'bw', copies: 1, sides: 'single', pageSelection: 'all', finishing: { lamination: false, binding: false, stapling: false },

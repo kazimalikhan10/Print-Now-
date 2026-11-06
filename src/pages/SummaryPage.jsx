@@ -9,7 +9,7 @@ import { getFilePrintCost, getOrderTotals, getSelectedPageCount } from '../utils
 function formatOptions(file) {
   const { options } = file;
   const color = options.color === 'bw' ? 'B&W' : 'Colour';
-  if (file.type === 'photo') return `${options.paperSize} · ${color} · ${options.copies} copies`;
+  if (file.type === 'photo') return `${options.photoQuantity || 6} photos · ${options.imageWidthMm || 35} × ${options.imageHeightMm || 45} mm · A4 sheet`; 
   return `${options.paperSize} · ${color} · ${options.sides === 'double' ? 'Double-sided' : 'Single-sided'} · ${options.copies} copies`;
 }
 

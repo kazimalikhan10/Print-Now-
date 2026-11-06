@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Crop, RotateCcw, RotateCw, ZoomIn, ZoomOut } from 'lucide-react';
-import { getPaperDimensions, getPhotoDimensions, getPhotoSheetLayout } from '../../utils/printPreview';
-import PrintPagePreview from './PrintPagePreview';
+import { getPaperDimensions, getPhotoSheetLayout } from '../../utils/printPreview';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const MIN_CROP = 0.08;
@@ -37,11 +36,6 @@ export default function PhotoPrintPreview({ file, onChange }) {
   const paper = getPaperDimensions(file.options.paperSize || 'A4', file.options.orientation || 'portrait');
   const rotation = editor.rotation;
   const fit = file.options.fit || 'fill';
-  const photo = getPhotoDimensions(file, source.width / Math.max(1, source.height));
-  const frameWidth = clamp(photo.width, 10, paper.width);
-  const frameHeight = clamp(photo.height, 10, paper.height);
-  const frameLeft = (paper.width - frameWidth) / 2;
-  const frameTop = (paper.height - frameHeight) / 2;
   const sheet = getPhotoSheetLayout(file);
   const copies = Math.max(1, Number(file.options.copies) || 1);
   const sheetsRequired = sheet.sheetsRequired || Math.max(1, Math.ceil(copies / Math.max(1, sheet.capacity)));
@@ -199,8 +193,13 @@ export default function PhotoPrintPreview({ file, onChange }) {
             src={file.preview}
             alt="Photo being cropped"
             draggable={false}
-            className="absolute left-1/2 top-1/2 h-full w-full max-w-none object-contain select-none"
-            style={{ transform: imageTransform, filter: file.options.color === 'bw' ? 'grayscale(1)' : 'none' }}
+            className="absolute left-1/2 top-1/2 max-w-none object-contain select-none"
+            style={{
+              width: rotation % 180 === 0 ? '100%' : `${100 / aspect}%`,
+              height: rotation % 180 === 0 ? '100%' : `${100 * aspect}%`,
+              transform: imageTransform,
+              filter: file.options.color === 'bw' ? 'grayscale(1)' : 'none',
+            }}
           />
 
           <div className="absolute inset-0 bg-black/35" aria-hidden="true" />
@@ -245,7 +244,7 @@ export default function PhotoPrintPreview({ file, onChange }) {
         <div className="mb-2 flex items-end justify-between gap-3">
           <div>
             <strong className="block text-[.74rem] text-[#202532]">Actual sheet layout</strong>
-            <span className="mt-0.5 block text-[.62rem] leading-[1.4] text-[#7b8291]">{sheet.mode === 'single' ? `1 photo fills the ${file.options.paperSize || 'A4'} sheet.` : `${sheet.capacity} photos fit on one ${file.options.paperSize || 'A4'} sheet at ${file.options.imageWidthMm || 45} × ${file.options.imageHeightMm || 45} mm.`}</span>
+            <span className="mt-0.5 block text-[.62rem] leading-[1.4] text-[#7b8291]">{sheet.mode === 'single' ? `1 photo fills the ${file.options.paperSize || 'A4'} sheet.` : `${file.options.photoQuantity || 6} photos at ${file.options.imageWidthMm || 35} × ${file.options.imageHeightMm || 45} mm each, with ${file.options.sheetGapMm ?? 3} mm spacing.`}</span>
           </div>
           <span className="whitespace-nowrap text-[.62rem] font-bold text-[#4a43e8]">{sheetsRequired} sheet{sheetsRequired === 1 ? '' : 's'}</span>
         </div>
@@ -254,16 +253,17 @@ export default function PhotoPrintPreview({ file, onChange }) {
             <div
               className="absolute grid"
               style={{
-                left: sheet.mode === 'single' ? '0%' : `${Math.max(0, (100 - (sheet.columns * sheet.imageWidth / paper.width * 100)) / 2)}%`,
-                top: sheet.mode === 'single' ? '0%' : `${Math.max(0, (100 - (sheet.rows * sheet.imageHeight / paper.height * 100)) / 2)}%`,
-                width: sheet.mode === 'single' ? '100%' : `${Math.min(100, sheet.columns * sheet.imageWidth / paper.width * 100)}%`,
-                height: sheet.mode === 'single' ? '100%' : `${Math.min(100, sheet.rows * sheet.imageHeight / paper.height * 100)}%`,
+                left: sheet.mode === 'single' ? '0%' : `${Math.max(0, (100 - (sheet.totalWidth || sheet.columns * sheet.imageWidth) / paper.width * 100) / 2)}%`,
+                top: sheet.mode === 'single' ? '0%' : `${Math.max(0, (100 - (sheet.totalHeight || sheet.rows * sheet.imageHeight) / paper.height * 100) / 2)}%`,
+                width: sheet.mode === 'single' ? '100%' : `${Math.min(100, (sheet.totalWidth || sheet.columns * sheet.imageWidth) / paper.width * 100)}%`,
+                height: sheet.mode === 'single' ? '100%' : `${Math.min(100, (sheet.totalHeight || sheet.rows * sheet.imageHeight) / paper.height * 100)}%`,
                 gridTemplateColumns: `repeat(${Math.max(1, sheet.columns)}, minmax(0, 1fr))`,
                 gridTemplateRows: `repeat(${Math.max(1, sheet.rows)}, minmax(0, 1fr))`,
-                gap: sheet.mode === 'single' ? '0' : '1px',
+                columnGap: sheet.mode === 'single' ? '0' : `${Number(file.options.sheetGapMm ?? 3) / Math.max(1, sheet.totalWidth || paper.width) * 100}%`,
+                rowGap: sheet.mode === 'single' ? '0' : `${Number(file.options.sheetGapMm ?? 3) / Math.max(1, sheet.totalHeight || paper.height) * 100}%`,
               }}
             >
-              {Array.from({ length: Math.max(1, sheet.capacity) }, (_, index) => (
+              {Array.from({ length: Math.max(1, Number(file.options.photoQuantity) || 6) }, (_, index) => (
                 <div key={index} className="relative min-w-0 overflow-hidden bg-[#edf0f4]">
                   {file.preview && (
                     <img

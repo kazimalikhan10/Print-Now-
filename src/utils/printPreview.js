@@ -36,43 +36,37 @@ export function mmToPagePercent(mm, pageMm) {
 export function getPhotoSheetLayout(file) {
   const paper = getPaperDimensions(file?.options?.paperSize || 'A4', file?.options?.orientation || 'portrait');
   const mode = file?.options?.photoLayout || 'single';
+  const quantity = Math.max(1, Number(file?.options?.photoQuantity || file?.options?.copies) || 1);
   if (mode === 'single') {
     return {
-      paper,
-      columns: 1,
-      rows: 1,
-      capacity: 1,
-      imageWidth: paper.width,
-      imageHeight: paper.height,
-      rotated: false,
-      mode,
-      sheetsRequired: Math.max(1, Number(file?.options?.copies) || 1),
+      paper, columns: 1, rows: 1, capacity: 1,
+      imageWidth: paper.width, imageHeight: paper.height,
+      rotated: false, mode, sheetsRequired: quantity,
     };
   }
 
-  const width = Number(file?.options?.imageWidthMm) || 0;
-  const height = Number(file?.options?.imageHeightMm) || 0;
-  if (width <= 0 || height <= 0) {
-    return { paper, columns: 1, rows: 1, capacity: 1, imageWidth: width || 45, imageHeight: height || 45, rotated: false, mode, sheetsRequired: Math.max(1, Number(file?.options?.copies) || 1) };
+  const width = Number(file?.options?.imageWidthMm ?? 35);
+  const height = Number(file?.options?.imageHeightMm ?? 45);
+  const margin = Math.max(0, Number(file?.options?.sheetMarginMm ?? 5) || 0);
+  const gap = Math.max(0, Number(file?.options?.sheetGapMm ?? 3) || 0);
+  const usableWidth = paper.width - margin * 2;
+  const usableHeight = paper.height - margin * 2;
+  const layouts = [];
+  for (let columns = 1; columns <= quantity; columns += 1) {
+    const rows = Math.ceil(quantity / columns);
+    const totalWidth = columns * width + (columns - 1) * gap;
+    const totalHeight = rows * height + (rows - 1) * gap;
+    if (totalWidth <= usableWidth && totalHeight <= usableHeight) {
+      layouts.push({ columns, rows, totalWidth, totalHeight, score: Math.abs(totalWidth / totalHeight - paper.width / paper.height) });
+    }
   }
-
-  const normalColumns = Math.floor(paper.width / width);
-  const normalRows = Math.floor(paper.height / height);
-  const rotatedColumns = Math.floor(paper.width / height);
-  const rotatedRows = Math.floor(paper.height / width);
-  const normalCapacity = Math.max(0, normalColumns * normalRows);
-  const rotatedCapacity = Math.max(0, rotatedColumns * rotatedRows);
-  const useRotated = rotatedCapacity > normalCapacity;
-  const capacity = Math.max(1, useRotated ? rotatedCapacity : normalCapacity);
+  layouts.sort((a, b) => a.score - b.score);
+  const selected = layouts[0];
+  if (!selected) return { paper, columns: 1, rows: quantity, capacity: 0, imageWidth: width, imageHeight: height, rotated: false, mode, sheetsRequired: quantity };
   return {
-    paper,
-    columns: useRotated ? rotatedColumns : normalColumns,
-    rows: useRotated ? rotatedRows : normalRows,
-    capacity,
-    imageWidth: useRotated ? height : width,
-    imageHeight: useRotated ? width : height,
-    rotated: useRotated,
-    mode,
-    sheetsRequired: Math.max(1, Math.ceil((Number(file?.options?.copies) || 1) / capacity)),
+    paper, columns: selected.columns, rows: selected.rows, capacity: quantity,
+    imageWidth: width, imageHeight: height, rotated: false, mode,
+    totalWidth: selected.totalWidth, totalHeight: selected.totalHeight,
+    sheetsRequired: 1,
   };
 }

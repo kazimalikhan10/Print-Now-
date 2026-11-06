@@ -2,8 +2,6 @@ import { getPhotoSheetLayout } from './utils/printPreview';
 export const MAX_FILE_SIZE = 20 * 1024 * 1024;
 export const ACCEPTED_FILE_TYPES = [
   'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'image/jpeg',
   'image/png',
 ];
@@ -109,7 +107,7 @@ export function getFilePrintCost(file, pricing) {
 
 export function getOrderTotals(files, pricing) {
   const totalPages = files.reduce((sum, file) => sum + (file.type === 'photo' ? 0 : getSelectedPageCount(file)), 0);
-  const totalCopies = files.reduce((sum, file) => sum + Math.max(1, Number(file.options?.copies) || 1), 0);
+  const totalCopies = files.reduce((sum, file) => sum + (file.type === 'photo' ? (Number(file.options?.photoQuantity) || 6) : Math.max(1, Number(file.options?.copies) || 1)), 0);
   const totalPhotoSheets = files.reduce((sum, file) => sum + (file.type === 'photo' ? getPhotoSheetLayout(file).sheetsRequired : 0), 0);
   const total = files.reduce((sum, file) => sum + getFilePrintCost(file, pricing), 0);
 

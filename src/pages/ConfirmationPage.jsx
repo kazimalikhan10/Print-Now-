@@ -1,5 +1,6 @@
 import { ArrowLeft, Check, FileText, Store } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import Header from '../components/layout/Header';
 import PageShell from '../components/layout/PageShell';
 import Button from '../components/ui/Button';
@@ -10,7 +11,14 @@ export default function ConfirmationPage() {
   const navigate = useNavigate();
   const { order, submitJob } = useOrder();
   const totals = getOrderTotals(order.files);
-  const handleSubmit = () => { const jobId = submitJob(); navigate(`/tracking/${jobId}`); };
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const handleSubmit = async () => {
+    setSubmitting(true); setError('');
+    try { const jobId = await submitJob(); navigate(`/tracking/${jobId}`); }
+    catch (submitError) { setError(submitError?.message || 'Could not create the print job.'); }
+    finally { setSubmitting(false); }
+  };
 
   return (
     <>
@@ -43,7 +51,8 @@ export default function ConfirmationPage() {
           {order.files.map((file) => <div className="flex items-center gap-[7px] px-[3px] py-[7px] text-[.69rem] text-[#626a7b]" key={file.id}><FileText size={15} /><span>{file.name}</span></div>)}
         </div>
 
-        <div className="mx-auto mt-7 w-full max-w-[560px]"><Button className="w-full" onClick={handleSubmit}>Submit Print Job</Button><button className="mx-auto mt-2.5 flex items-center justify-center gap-1.5 border-0 bg-transparent p-[7px] text-[.74rem] text-[#555d70]" onClick={() => navigate('/summary')}><ArrowLeft size={15} /> Go back & edit</button></div>
+        {error && <p role="alert" className="mx-auto mt-4 max-w-[560px] rounded-xl bg-[#fff1f2] p-3 text-sm text-[#b42336]">{error}</p>}
+        <div className="mx-auto mt-7 w-full max-w-[560px]"><Button className="w-full" onClick={handleSubmit} disabled={submitting}>{submitting ? 'Creating print job…' : 'Create Print Job'}</Button><button className="mx-auto mt-2.5 flex items-center justify-center gap-1.5 border-0 bg-transparent p-[7px] text-[.74rem] text-[#555d70]" onClick={() => navigate('/summary')}><ArrowLeft size={15} /> Go back & edit</button></div>
       </PageShell>
     </>
   );

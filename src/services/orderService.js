@@ -17,14 +17,16 @@ export function getOrder(id) {
   return getOrders().find((order) => order.id === id) || null;
 }
 
-export function createOrder({ order, pricing }) {
-  const id = `PN-${Math.floor(10000 + Math.random() * 89999)}`;
+export function createOrder({ order, pricing, id: providedId = null, totalOverride = undefined, status = 'submitted', paymentId = null, paymentStatus = undefined }) {
+  const id = providedId || `PN-${Math.floor(10000 + Math.random() * 89999)}`;
   const files = order.files.map((file) => ({
     name: file.name,
     type: file.type,
     pages: file.pages,
     selectedPages: getSelectedPageCount(file),
-    copies: Number(file.options?.copies) || 1,
+    copies: file.type === 'photo' ? (Number(file.options?.photoQuantity) || 6) : (Number(file.options?.copies) || 1),
+    photoSize: file.options?.photoSize,
+    photoQuantity: file.options?.photoQuantity,
     paperSize: file.options?.paperSize,
     orientation: file.options?.orientation,
     color: file.options?.color,
@@ -41,14 +43,16 @@ export function createOrder({ order, pricing }) {
     finishing: file.options?.finishing || {},
   }));
 
-  const total = order.files.reduce((sum, file) => sum + getLinePrice(file, pricing), 0);
+  const estimatedTotal = order.files.reduce((sum, file) => sum + getLinePrice(file, pricing), 0);
+  const total = Number.isFinite(Number(totalOverride)) ? Number(totalOverride) : estimatedTotal;
   const snapshot = {
     id,
     customer: order.customer,
     shop: order.shop,
-    status: 'submitted',
-    paymentStatus: order.checkoutPayment?.status === 'mock-paid' ? 'paid' : 'pending',
+    status,
+    paymentStatus: paymentStatus || (order.checkoutPayment?.status === 'mock-paid' ? 'paid' : 'pending'),
     paymentMethod: order.checkoutPayment?.method || 'shop',
+    paymentId,
     createdAt: `Today, ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
     total,
     pages: order.files.reduce((sum, file) => sum + (file.type === 'photo' ? getPhotoSheetLayout(file).sheetsRequired : getSelectedPageCount(file)), 0),

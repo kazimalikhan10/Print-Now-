@@ -240,35 +240,11 @@ This prevents pages and copies from being incorrectly treated as the same quanti
 
 ## 💳 Payments
 
-The customer checkout supports:
+The active checkout uses Razorpay Standard Checkout for online payments. Razorpay presents the payment methods enabled for the merchant account, including UPI on supported devices, and can hand off to an installed UPI app on supported mobile browsers. PrintNow does not create direct Google Pay, PhonePe, or Paytm app links.
 
-### UPI
+Customers can also choose **Pay at Shop**. This creates a backend cash-payment record that remains `AWAITING_APPROVAL` until the shop confirms receipt of cash.
 
-The UI supports:
-
-* Google Pay
-* PhonePe
-* Paytm
-* BHIM
-* UPI ID entry
-
-Where supported by the device/browser, the operating system or installed payment application can handle the actual UPI intent.
-
-### Card
-
-Card payment UI is available for the frontend flow.
-
-### Pay at Shop
-
-Customers can also select:
-
-```text
-Pay at shop
-```
-
-The payment state is stored with the order.
-
-> Actual payment processing is not implemented because the current application is frontend-only.
+The frontend never treats the browser callback alone as proof of payment. It checks the payment record returned by the backend, which is updated after the backend verifies Razorpay's `payment.captured` webhook.
 
 ---
 
@@ -848,3 +824,54 @@ Production backend integration can be added without redesigning the complete fro
 
 ---
 
+
+
+## PrintNowCloud backend integration (Razorpay + cash payments)
+
+The active customer flow (`/upload` → `/checkout` → `/tracking/:jobId`) uses the existing backend for uploads, print jobs, and payments. The checkout creates a print job first, then creates a payment record through `POST /payments` using either `ONLINE` (Razorpay) or `CASH` (pay at shop).
+
+### Online payment flow
+
+1. The frontend creates the print job with `POST /print-jobs`.
+2. It requests an online payment from `POST /payments` with the print job ID and customer name, phone, and email.
+3. The backend returns the Razorpay public key ID, Razorpay order ID, amount (paise), currency, and payment record ID.
+4. The frontend opens Razorpay Standard Checkout (`checkout.js`) with UPI placed first in the checkout display configuration while retaining Razorpay's default payment methods. UPI app handoff is provided by Razorpay on supported mobile browsers; the frontend does not build direct Google Pay/PhonePe deep links.
+5. The browser callback is treated only as a signal to check status. The frontend polls `GET /payments/:paymentId` and marks the order paid only when the backend reports `SUCCESSFUL`.
+6. The backend's `payment.captured` webhook verifies the raw-body Razorpay signature, order ID, amount, and currency before marking the payment successful. A `payment.failed` event is not treated as final because the customer may retry against the same Razorpay order.
+
+### Cash payment flow
+
+The frontend creates a `CASH` payment record and sends the customer to tracking. The payment remains `AWAITING_APPROVAL` until the shop approves it through the backend's cash approval flow.
+
+### Backend configuration required
+
+- Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` on the backend only. Never put the Razorpay secret in frontend environment variables.
+- Configure a Razorpay webhook pointing to `https://<your-backend-domain>/payments/webhook/razorpay` and subscribe to `payment.captured` (and optionally `payment.failed`). The webhook secret must exactly match `RAZORPAY_WEBHOOK_SECRET`.
+- Ensure automatic payment capture is enabled in the Razorpay account, because the backend finalizes orders from the `payment.captured` event.
+- The backend payment module uses MongoDB transactions; its database must support transactions (for example, MongoDB Atlas or a replica set).
+- The payment service calls the PrintJob gRPC service at `localhost:50051`; the backend startup in this repository starts that service. Keep the gRPC service reachable from the payment process in deployment.
+- The payment API schema requires a valid customer email as well as name and phone. Checkout therefore asks for all three fields.
+- Use Razorpay Test Mode keys and webhook configuration for testing before switching to Live Mode.
+
+The frontend intentionally does not trust the Razorpay browser callback as proof of payment. If the webhook is not configured or cannot reach the backend, the checkout remains in a payment-confirmation-pending state rather than falsely marking the order paid.
+
+### Configure the frontend
+
+1. Copy `.env.example` to `.env`.
+2. Set `VITE_API_PROXY_TARGET` to the deployed backend origin (for example, `https://your-backend.example.com`). For local development, leave `VITE_API_BASE_URL=/api` so Vite proxies `/api/*` to the backend without a browser cross-origin request.
+3. Run `npm install` and `npm run dev`. Restart Vite after changing `.env`.
+4. For a deployed frontend, either provide a same-origin `/api` reverse proxy that forwards to the backend, or set `VITE_API_BASE_URL` to the backend origin if that backend already permits the frontend origin via CORS. Frontend JavaScript cannot bypass a missing CORS policy.
+
+### Current backend limitations reflected in the UI
+
+- Supported uploads are PDF, JPEG, and PNG only; DOC/DOCX were removed because the backend validator rejects them.
+- Documents map to A4/A3, portrait/landscape, BW/colour, single/double-sided, copies (1–100), and all/custom page selection.
+- Photos map only to PASSPORT/STAMP and quantity 6/12. Crop, custom dimensions, sheet layout, and finishing are not part of the current print-job API and are not sent.
+- The backend calculates the final print-job price. The checkout amount is labelled as an estimate.
+- Creating a print job returns the backend job ID and tracking refreshes backend status every 10 seconds. The backend initially marks new jobs `PAYMENT_REQUIRED`; this build does not initiate or confirm payment.
+
+### If testing fails
+
+- `Backend URL is not configured`: check the `.env` values and restart Vite.
+- Network/CORS error: verify `VITE_API_PROXY_TARGET` is reachable and that the Vite proxy is active, or configure a same-origin proxy / allowed CORS origin for production.
+- Upload rejection: use a valid PDF/JPG/PNG file under 20 MB. The backend checks actual file contents, not only the extension.

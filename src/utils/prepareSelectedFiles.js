@@ -6,9 +6,10 @@ export async function prepareSelectedFiles(fileList) {
   const { valid, errors } = validateFiles(Array.from(fileList || []));
   const files = await Promise.all(valid.map(async (file) => {
     const type = getFileType(file);
-    const pages = type === 'document' && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name))
-      ? await getPdfPageCount(file)
-      : 1;
+    let pages = 1;
+    if (type === 'document' && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name))) {
+      try { pages = await getPdfPageCount(file); } catch { pages = 1; }
+    }
     return createFile({
       name: file.name,
       type,

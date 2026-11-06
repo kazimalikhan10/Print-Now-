@@ -36,7 +36,7 @@ export default function FileUpload({ onFiles, errors = [], disabled = false, upl
             <span className="pn-upload-spinner h-5 w-5 shrink-0 rounded-full border-2 border-[#dcd9ff] border-t-[#4a43e8]" aria-hidden="true" />
             <div className="min-w-0 flex-1">
               <strong className="block text-[.74rem] font-[750] text-[#202332]">Adding files…</strong>
-              <span className="mt-0.5 block text-[.62rem] text-[#7b8294]">Preparing your files. Large files may take a little longer.</span>
+              <span className="mt-0.5 block text-[.62rem] text-[#7b8294]">Uploading and validating your files. Large files may take a little longer.</span>
             </div>
           </div>
           <div className="pn-upload-progress h-1 overflow-hidden bg-[#eeedff]"><span className="block h-full w-1/3 rounded-full bg-[#4a43e8]" /></div>
@@ -47,7 +47,7 @@ export default function FileUpload({ onFiles, errors = [], disabled = false, upl
                   <div key={`${file.name}-${file.size}-${file.lastModified}`} className="flex min-w-0 items-center gap-2 text-[.62rem] text-[#6f7687]">
                     <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#4a43e8]" aria-hidden="true" />
                     <span className="truncate">{file.name}</span>
-                    <span className="ml-auto shrink-0 text-[#9a9fad]">Preparing</span>
+                    <span className="ml-auto shrink-0 text-[#9a9fad]">Uploading</span>
                   </div>
                 ))}
               </div>
@@ -66,7 +66,7 @@ export default function FileUpload({ onFiles, errors = [], disabled = false, upl
           ref={inputRef}
           type="file"
           multiple
-          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+          accept=".pdf,.jpg,.jpeg,.png"
           onChange={(event) => { handleSelection(event.target.files); event.target.value = ''; }}
           hidden
         />
@@ -76,7 +76,7 @@ export default function FileUpload({ onFiles, errors = [], disabled = false, upl
         <Button type="button" onClick={() => inputRef.current?.click()} disabled={disabled}>
           Select Files
         </Button>
-        <small>PDF, JPG, PNG, DOC, DOCX · Up to 20 MB per file</small>
+        <small>PDF, JPG, PNG · Up to 20 MB per file</small>
         <span className="mt-2 block text-[.64rem] text-[#81879a]">On desktop, you can also drag and drop files here.</span>
       </div>
 

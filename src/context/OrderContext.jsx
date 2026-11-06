@@ -9,11 +9,14 @@ import * as orderService from '../services/orderService';
 import * as notificationService from '../services/notificationService';
 import * as staffService from '../services/staffService';
 import * as customerService from '../services/customerService';
+import { api, deleteBackendFile, isApiConfigured } from '../services/apiService';
+import { getSelectedPageNumbers } from '../utils';
 
 const OrderContext = createContext(null);
 
 export function isFileConfigured(file) {
   if (!file?.options) return false;
+  if (!file.backendFileId || file.backendValidation?.status === 'INVALID' || file.backendFileStatus === 'FAILED') return false;
   if (!file.options.paperSize || !file.options.orientation || !file.options.color) return false;
   if (!Number.isInteger(Number(file.options.copies)) || Number(file.options.copies) < 1) return false;
   if (file.type === 'document') {
@@ -21,6 +24,16 @@ export function isFileConfigured(file) {
     if (file.options.pageSelection === 'custom' && !file.options.pageRange?.trim()) return false;
   }
   return true;
+}
+
+export function mapBackendJobStatus(status) {
+  const normalized = String(status || '').toUpperCase();
+  if (normalized === 'COMPLETED') return 'completed';
+  if (normalized === 'PRINTING') return 'printing';
+  if (normalized === 'PROCESSING' || normalized === 'QUEUED' || normalized === 'DISPATCHED') return 'processing';
+  if (normalized === 'CANCELLED') return 'cancelled';
+  if (normalized === 'PROCESSING_FAILED' || normalized === 'PRINT_FAILED') return 'action_required';
+  return 'submitted';
 }
 
 export function OrderProvider({ children }) {
@@ -38,14 +51,40 @@ export function OrderProvider({ children }) {
   useEffect(() => { staffService.saveStaff(staff); }, [staff]);
   useEffect(() => setOrder((current) => ({ ...current, shop, customer })), [shop, customer]);
 
-  const addFiles = (files) => setOrder((current) => ({ ...current, files: [...current.files, ...files] }));
-  const removeFile = (id) => setOrder((current) => ({ ...current, files: current.files.filter((file) => file.id !== id) }));
-  const updateFile = (id, updates) => setOrder((current) => ({ ...current, files: current.files.map((file) => file.id === id ? { ...file, ...updates } : file) }));
+  const addFiles = (files) => setOrder((current) => ({ ...current, files: [...current.files, ...files], job: { id: null, status: null }, checkoutPayment: { method: 'shop', status: 'pending' } }));
+  const removeFile = (id) => {
+    const target = order.files.find((file) => file.id === id);
+    const backendIdsToRemove = [...new Set([target?.backendFileId, target?.previousBackendFileId].filter(Boolean))];
+    if (isApiConfigured()) {
+      for (const backendFileId of backendIdsToRemove) {
+        void deleteBackendFile(backendFileId).catch((error) => console.warn('Could not remove uploaded backend file:', error));
+      }
+    }
+    if (target?.preview?.startsWith('blob:')) URL.revokeObjectURL(target.preview);
+    if (target?.croppedPreview?.startsWith('blob:')) URL.revokeObjectURL(target.croppedPreview);
+    setOrder((current) => ({ ...current, files: current.files.filter((file) => file.id !== id), job: { id: null, status: null } }));
+  };
+  const updateFile = (id, updates) => setOrder((current) => ({ ...current, files: current.files.map((file) => file.id === id ? { ...file, ...updates } : file), job: { id: null, status: null } }));
   const updateFileOptions = (id, options) => setOrder((current) => ({
     ...current,
+    job: { id: null, status: null },
     files: current.files.map((file) => {
       if (file.id !== id) return file;
       const next = { ...file, options: { ...file.options, ...options } };
+      const photoSheetWasEdited = file.type === 'photo' && [
+        'crop', 'rotation', 'photoQuantity', 'imageWidthMm', 'imageHeightMm', 'sheetMarginMm', 'sheetGapMm',
+      ].some((key) => Object.prototype.hasOwnProperty.call(options, key));
+      if (photoSheetWasEdited) {
+        return {
+          ...next,
+          previousBackendFileId: file.backendFileId || file.previousBackendFileId || null,
+          backendFileId: null,
+          backendFileStatus: null,
+          backendValidation: null,
+          backendAnalysis: null,
+          configured: false,
+        };
+      }
       return { ...next, configured: isFileConfigured(next) };
     }),
   }));
@@ -121,19 +160,96 @@ export function OrderProvider({ children }) {
     addNotification({ type: 'staff', title: 'Staff status changed', message: `${changed?.name || 'Staff member'} is now ${changed?.active ? 'active' : 'inactive'}.` });
   };
 
-  const submitJob = () => {
-    const snapshot = orderService.createOrder({ order, pricing });
+  const createPrintJob = async () => {
+    if (!isApiConfigured()) throw new Error('Backend URL is not configured. Add VITE_API_BASE_URL to your frontend .env file.');
+    if (!order.files.length) throw new Error('Add at least one file before creating a print job.');
+    if (order.job?.id && order.job?.backendStatus === 'PAYMENT_REQUIRED') {
+      return { jobId: order.job.id, backendJob: order.job.backendJob || null };
+    }
+
+    const items = order.files.map((file) => {
+      if (!file.backendFileId) throw new Error(`${file.name} has not been uploaded to the backend. Please upload it again.`);
+      if (file.type === 'photo' && !file.photoSheetPdf) {
+        const quantity = Number(file.options?.photoQuantity || 6);
+        const size = file.options?.photoSize || 'PASSPORT';
+        if (!['PASSPORT', 'STAMP'].includes(size) || ![6, 12].includes(quantity)) {
+          throw new Error(`Choose a supported photo type and quantity for ${file.name}.`);
+        }
+        return { type: 'PHOTO', fileId: file.backendFileId, photoConfiguration: { size, quantity } };
+      }
+
+      const copies = file.photoSheetPdf ? 1 : (Number(file.options?.copies) || 1);
+      if (!Number.isInteger(copies) || copies < 1 || copies > 100) {
+        throw new Error(`Copies for ${file.name} must be between 1 and 100.`);
+      }
+      const selectedPages = getSelectedPageNumbers(file);
+      const pageSelection = file.options?.pageSelection === 'custom'
+        ? { type: 'PAGES', pages: selectedPages }
+        : { type: 'ALL' };
+      if (pageSelection.type === 'PAGES' && !pageSelection.pages.length) {
+        throw new Error(`Choose at least one valid page for ${file.name}.`);
+      }
+      return {
+        type: 'DOCUMENT',
+        fileId: file.backendFileId,
+        pageCount: file.photoSheetPdf ? 1 : Math.max(1, Number(file.pages) || 1),
+        printConfiguration: {
+          colorMode: file.options?.color === 'color' || file.type === 'photo' ? 'COLOR' : 'BW',
+          paperSize: file.photoSheetPdf ? 'A4' : (['A3', 'A4'].includes(file.options?.paperSize) ? file.options.paperSize : 'A4'),
+          orientation: file.photoSheetPdf ? 'PORTRAIT' : (file.options?.orientation === 'landscape' ? 'LANDSCAPE' : 'PORTRAIT'),
+          duplex: file.photoSheetPdf ? 'SINGLE' : (file.options?.sides === 'double' ? 'DOUBLE' : 'SINGLE'),
+          copies,
+          pageSelection: file.photoSheetPdf ? { type: 'ALL' } : pageSelection,
+        },
+      };
+    });
+
+    const createResponse = await api.printJobs.create(items);
+    const printJobId = createResponse?.data?.printJobId;
+    if (!printJobId) throw new Error('The backend did not return a print job ID.');
+
+    let backendJob = null;
+    try { backendJob = await api.printJobs.get(printJobId); } catch (error) {
+      console.warn('Print job was created, but its details could not be fetched yet:', error);
+    }
+    setOrder((current) => ({
+      ...current,
+      job: { id: printJobId, status: mapBackendJobStatus(backendJob?.status || 'PAYMENT_REQUIRED'), backendStatus: backendJob?.status || 'PAYMENT_REQUIRED', backendJob },
+    }));
+    return { jobId: printJobId, backendJob };
+  };
+
+  const finalizeCheckout = ({ jobId, paymentId = null, paymentMethod = 'shop', paymentStatus = 'pending', totalOverride = undefined } = {}) => {
+    const snapshot = orderService.createOrder({
+      order: { ...order, checkoutPayment: { method: paymentMethod, status: paymentStatus } },
+      pricing,
+      id: jobId,
+      totalOverride,
+      status: mapBackendJobStatus(order.job?.backendStatus || 'PAYMENT_REQUIRED'),
+      paymentId,
+      paymentStatus,
+    });
     setOrders(orderService.getOrders());
-    // The submitted order is now a snapshot in the order history. Clear the active
-    // cart immediately so a new print request never contains previously submitted files.
     setOrder((current) => ({
       ...current,
       files: [],
-      job: { id: snapshot.id, status: snapshot.status },
-      checkoutPayment: { method: 'shop', status: 'pending' },
+      job: { id: jobId, status: snapshot.status, backendStatus: current.job?.backendStatus || 'PAYMENT_REQUIRED' },
+      checkoutPayment: { method: paymentMethod, status: paymentStatus, paymentId },
     }));
-    addNotification({ type: 'order', title: 'Order submitted', message: `${snapshot.id} is now in the shop queue.`, orderId: snapshot.id });
-    return snapshot.id;
+    addNotification({
+      type: 'order',
+      title: paymentMethod === 'online' ? 'Payment confirmed' : 'Print job created',
+      message: paymentMethod === 'online' ? `Backend-confirmed payment for print job ${jobId}.` : `Print job ${jobId} is awaiting payment at the shop.`,
+      orderId: jobId,
+    });
+    return snapshot;
+  };
+
+  // Retained for the older confirmation route; the active checkout uses the explicit payment flow.
+  const submitJob = async () => {
+    const { jobId, backendJob } = await createPrintJob();
+    finalizeCheckout({ jobId, paymentMethod: 'shop', paymentStatus: 'pending', totalOverride: Number.isFinite(Number(backendJob?.pricing?.totalAmount)) ? Number(backendJob.pricing.totalAmount) : undefined });
+    return jobId;
   };
 
   const updateOrderStatus = (id, status) => {
@@ -148,6 +264,20 @@ export function OrderProvider({ children }) {
     setOrders(orderService.updatePaymentStatus(id, paymentStatus, paymentMethod));
     const labels = { paid: 'Payment marked as paid', pending: 'Payment marked as pending', refunded: 'Payment refunded', failed: 'Payment failed' };
     addNotification({ type: 'payment', title: `Payment · ${id}`, message: labels[paymentStatus] || `Payment status: ${paymentStatus}`, orderId: id });
+  };
+
+  const approveCashPayment = async (id) => {
+    const target = orders.find((item) => item.id === id);
+    if (!target?.paymentId || target.paymentMethod !== 'shop') {
+      throw new Error('This order does not have a backend cash-payment record.');
+    }
+    const result = await api.payments.approveCash(target.paymentId);
+    const payment = result?.data ?? result;
+    if (String(payment?.status || '').toUpperCase() !== 'SUCCESSFUL') {
+      throw new Error('The backend has not confirmed the cash payment yet.');
+    }
+    updatePaymentStatus(id, 'paid', 'shop');
+    return payment;
   };
 
   const cancelOrder = (id) => {
@@ -185,9 +315,12 @@ export function OrderProvider({ children }) {
     updateFileOptions,
     updateCustomer,
     submitJob,
+    createPrintJob,
+    finalizeCheckout,
     updateShopSettings,
     updateOrderStatus,
     updatePaymentStatus,
+    approveCashPayment,
     cancelOrder,
     setOrderActionRequired,
     reorder,

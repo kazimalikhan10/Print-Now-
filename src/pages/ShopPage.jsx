@@ -16,12 +16,13 @@ import { useNavigate } from 'react-router-dom';
 import PageShell from '../components/layout/PageShell';
 import { useOrder } from '../context/OrderContext';
 import { prepareSelectedFiles } from '../utils/prepareSelectedFiles';
+import { isApiConfigured, uploadFileToBackend } from '../services/apiService';
 import { formatBusinessHours, getShopOpenStatus } from '../utils/shopHours';
 import shopFront from '../assets/shop-front.png';
 import uploadHero from '../assets/upload-hero.png';
 
 const services = [
-  { title: 'Documents', subtitle: 'PDF, Word, etc.', icon: FileText, tone: 'bg-[#eef5ff] text-[#2d7df4]' },
+  { title: 'Documents', subtitle: 'PDF documents', icon: FileText, tone: 'bg-[#eef5ff] text-[#2d7df4]' },
   { title: 'Photos', subtitle: 'High quality', icon: ImageIcon, tone: 'bg-[#fff0f5] text-[#f23872]' },
   { title: 'ID Cards', subtitle: 'Student, Office & more', icon: UserCircle, tone: 'bg-[#fff7e9] text-[#f0a11a]' },
   { title: 'More', subtitle: 'Lamination, Spiral, etc.', icon: MoreHorizontal, tone: 'bg-[#f2efff] text-[#4a43e8]' },
@@ -60,12 +61,24 @@ export default function ShopPage() {
     setPreparing(true);
     setPickerError('');
     try {
+      if (!isApiConfigured()) throw new Error('Backend URL is not configured. Copy .env.example to .env, set the backend target and restart Vite.');
       const result = await prepareSelectedFiles(selected);
-      if (result.errors.length) setPickerError(result.errors.join(' '));
-      if (result.files.length) { addFiles(result.files); navigate('/checkout'); }
+      const errors = [...result.errors];
+      const uploadedFiles = [];
+      for (const file of result.files) {
+        try {
+          const backendFile = await uploadFileToBackend(file.sourceFile);
+          uploadedFiles.push({ ...file, backendFileId: backendFile.id, backendFileStatus: backendFile.status, backendValidation: backendFile.validation, backendAnalysis: backendFile.analysis, pages: Number(backendFile.analysis?.pageCount) || file.pages });
+        } catch (uploadError) { errors.push(uploadError?.message || `Could not upload ${file.name}.`); }
+      }
+      if (errors.length) setPickerError(errors.join(' '));
+      if (uploadedFiles.length) {
+        addFiles(uploadedFiles);
+        navigate('/checkout', { state: errors.length ? { uploadErrors: errors } : {} });
+      }
     } catch (error) {
       console.error('Could not prepare selected files', error);
-      setPickerError('Some files could not be prepared. Please try again.');
+      setPickerError(error?.message || 'Some files could not be prepared. Please try again.');
     } finally { setPreparing(false); }
   };
 
@@ -88,9 +101,9 @@ export default function ShopPage() {
 
   return (
     <div className="min-h-screen bg-[#fbfcff] text-[#10152b]">
-      <input ref={filesInputRef} type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={handlePickedFiles} className="hidden" aria-label="Select files" />
+      <input ref={filesInputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png" onChange={handlePickedFiles} className="hidden" aria-label="Select files" />
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handlePickedFiles} className="hidden" aria-label="Take a picture" />
-      {preparing && <div className="fixed inset-x-4 top-20 z-50 mx-auto max-w-sm rounded-xl border border-[#e6e8f2] bg-white p-3 text-sm font-semibold shadow-lg" role="status">Preparing your files…</div>}
+      {preparing && <div className="fixed inset-x-4 top-20 z-50 mx-auto max-w-sm rounded-xl border border-[#e6e8f2] bg-white p-3 text-sm font-semibold shadow-lg" role="status">Uploading and validating your files…</div>}
       {pickerError && <div className="fixed inset-x-4 top-20 z-50 mx-auto max-w-sm rounded-xl bg-[#fff1f2] p-3 text-sm text-[#b42336] shadow-lg" role="alert">{pickerError}</div>}
       <header className="sticky top-0 z-30 border-b border-[#edf0f6]/80 bg-[#fbfcff]/95 backdrop-blur-xl">
         <div className="mx-auto flex min-h-[70px] w-[calc(100%-28px)] max-w-[760px] items-center gap-2 px-1.2 py-3 sm:min-h-[68px]">
